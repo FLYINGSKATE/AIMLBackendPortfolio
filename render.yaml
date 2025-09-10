@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: aiml-portfolio
+    env: docker
+    plan: free
+    region: singapore
+    build:
+      dockerfile: ./Dockerfile
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: 1
+      - key: PORT
+        value: 8001
+    numInstances: 1

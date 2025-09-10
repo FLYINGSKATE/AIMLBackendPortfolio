@@ -6,7 +6,13 @@ from fastapi.openapi.utils import get_openapi
 import os
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List, Union
+
+# Import config
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent))
+from config import config as app_config
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -30,12 +36,18 @@ app = FastAPI(
     - 📈 Time Series Forecasting (ARIMA, LSTM)
     - 🎮 Reinforcement Learning (CartPole with DQN)
     """,
-    version="1.0.0",
+    version=app_config.VERSION,
     contact={
-        "name": "Your Name",
-        "email": "your.email@example.com",
+        "name": "Ashraf Khan",
+        "email": "ashrafksalim1@gmail.com",
     },
+    docs_url=f"{app_config.API_PREFIX}/docs",
+    redoc_url=f"{app_config.API_PREFIX}/redoc",
 )
+
+# Create necessary directories
+os.makedirs(app_config.UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(app_config.MODEL_DIR, exist_ok=True)
 
 # Mount static files for the portfolio
 PORTFOLIO_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "portfolio"))
@@ -45,6 +57,7 @@ os.makedirs(os.path.join(PORTFOLIO_DIR, "static"), exist_ok=True)
 
 # Serve portfolio static files from the static directory
 app.mount("/static", StaticFiles(directory=os.path.join(PORTFOLIO_DIR, "static")), name="static")
+app.mount("/uploads", StaticFiles(directory=app_config.UPLOAD_FOLDER), name="uploads")
 
 # Serve CSS and JS files from the portfolio root
 app.mount("/css", StaticFiles(directory=PORTFOLIO_DIR), name="css")
@@ -90,7 +103,7 @@ app.openapi = custom_openapi
 # Enable CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=app_config.BACKEND_CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
