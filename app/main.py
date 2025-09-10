@@ -109,6 +109,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Health check endpoint
+@app.get("/api/health", status_code=200)
+async def health_check():
+    """Health check endpoint for monitoring"""
+    return {
+        "status": "healthy",
+        "version": app_config.VERSION,
+        "debug": app_config.DEBUG
+    }
+
 # Include all routers
 app.include_router(supervised_router, prefix="/api/supervised", tags=["Supervised Learning"])
 app.include_router(unsupervised_router, prefix="/api/unsupervised", tags=["Unsupervised Learning"])

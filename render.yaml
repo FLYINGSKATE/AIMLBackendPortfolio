@@ -6,9 +6,19 @@ services:
     region: singapore
     build:
       dockerfile: ./Dockerfile
+      buildCommand: |
+        docker build -t aiml-portfolio .
+      runCommand: |
+        gunicorn app.main:app --workers 1 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
     envVars:
       - key: PYTHONUNBUFFERED
         value: 1
       - key: PORT
-        value: 8001
+        value: 10000
+      - key: PYTHONPATH
+        value: /app
+      - key: DEBUG
+        value: 'False'
     numInstances: 1
+    healthCheckPath: /api/health
+    autoDeploy: true
