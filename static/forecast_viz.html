@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Time Series Forecast Visualization</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select, button {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #chartContainer {
+            margin-top: 30px;
+            position: relative;
+            height: 400px;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            display: none;
+        }
+        .error {
+            color: red;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Time Series Forecast Visualization</h1>
+        
+        <div class="form-group">
+            <h3>1. Train a New Model</h3>
+            <label for="modelId">Model ID:</label>
+            <input type="text" id="modelId" placeholder="e.g., monthly_sales" value="test_forecast">
+            
+            <label for="modelType">Model Type:</label>
+            <select id="modelType">
+                <option value="lstm">LSTM</option>
+                <option value="arima">ARIMA</option>
+            </select>
+            
+            <div class="form-group">
+            <label for="trainingData">Training Data (JSON array of numbers):</label>
+            <button type="button" onclick="loadSampleData()" style="margin-bottom: 10px; background-color: #2196F3;">
+                Load Sample Data
+            </button>
+            <textarea id="trainingData" rows="5">[10.3, 11.2, 12.5, 13.8, 15.1, 16.4, 15.7, 14.2, 13.8, 12.9, 11.5, 10.8, 11.2, 12.6, 13.9, 15.2, 16.5, 17.8, 17.1, 15.6, 14.9, 13.4, 12.1, 11.3]</textarea>
+            <div class="sample-options" style="margin-top: 10px; display: none;" id="sampleOptions">
+                <div style="margin-bottom: 15px;">
+                    <strong>Predefined Patterns:</strong><br>
+                    <button type="button" onclick="loadPredefinedData('monthly_sales')" style="margin: 3px;">📈 Monthly Sales</button>
+                    <button type="button" onclick="loadPredefinedData('website_traffic')" style="margin: 3px;">🌐 Website Traffic</button>
+                    <button type="button" onclick="loadPredefinedData('stock_price')" style="margin: 3px;">💹 Stock Price</button>
+                    <button type="button" onclick="loadPredefinedData('temperature')" style="margin: 3px;">🌡️ Temperature</button>
+                </div>
+                
+                <div style="display: flex; flex-wrap: wrap; gap: 15px;">
+                    <div style="flex: 1; min-width: 150px;">
+                        <label for="trend">Trend: <span id="trendValue">0.5</span></label>
+                        <input type="range" id="trend" min="0" max="1" step="0.1" value="0.5" class="slider" oninput="updateSampleData()">
+                        
+                        <label for="seasonality">Seasonality: <span id="seasonalityValue">0.5</span></label>
+                        <input type="range" id="seasonality" min="0" max="1" step="0.1" value="0.5" class="slider" oninput="updateSampleData()">
+                    </div>
+                    
+                    <div style="flex: 1; min-width: 150px;">
+                        <label for="noise">Noise: <span id="noiseValue">0.2</span></label>
+                        <input type="range" id="noise" min="0" max="1" step="0.1" value="0.2" class="slider" oninput="updateSampleData()">
+                        
+                        <label for="dataPoints">Data Points: <span id="dataPointsValue">30</span></label>
+                        <input type="range" id="dataPoints" min="12" max="100" value="30" class="slider" oninput="updateSampleData()">
+                    </div>
+                </div>
+            </div>
+            
+            <style>
+                .slider {
+                    width: 100%;
+                    margin-bottom: 15px;
+                }
+                button {
+                    padding: 5px 10px;
+                    background-color: #4CAF50;
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    transition: background-color 0.3s;
+                }
+                button:hover {
+                    background-color: #45a049;
+                }
+                label {
+                    display: block;
+                    margin-top: 10px;
+                }
+            </style>
+        </div>    
+            <button onclick="trainModel()">Train Model</button>
+            <div id="trainingStatus" class="loading">Training model, please wait...</div>
+            <div id="trainingError" class="error"></div>
+        </div>
+        
+        <div class="form-group">
+            <h3>2. Generate Forecast</h3>
+            <label for="forecastSteps">Forecast Steps:</label>
+            <input type="number" id="forecastSteps" value="5" min="1" max="100">
+            
+            <button onclick="generateForecast()">Generate Forecast</button>
+            <div id="forecastStatus" class="loading">Generating forecast, please wait...</div>
+            <div id="forecastError" class="error"></div>
+        </div>
+        
+        <div id="chartContainer">
+            <canvas id="forecastChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = '/api';
+        let chart;
+        
+        // Load sample data from the API
+        async function loadSampleData() {
+            const options = document.getElementById('sampleOptions');
+            if (options.style.display === 'none') {
+                options.style.display = 'block';
+                // Initial load of sample data
+                await updateSampleData();
+            } else {
+                options.style.display = 'none';
+            }
+        }
+        
+        // Load a predefined dataset with specific characteristics
+        async function loadPredefinedData(datasetType) {
+            const settings = {
+                'monthly_sales': { trend: 0.7, seasonality: 0.8, noise: 0.2, points: 24 },
+                'website_traffic': { trend: 0.5, seasonality: 0.9, noise: 0.3, points: 30 },
+                'stock_price': { trend: 0.3, seasonality: 0.2, noise: 0.5, points: 90 },
+                'temperature': { trend: 0.1, seasonality: 0.9, noise: 0.1, points: 36 }
+            };
+            
+            const config = settings[datasetType] || settings.monthly_sales;
+            
+            // Update sliders
+            document.getElementById('trend').value = config.trend;
+            document.getElementById('seasonality').value = config.seasonality;
+            document.getElementById('noise').value = config.noise;
+            document.getElementById('dataPoints').value = config.points;
+            
+            // Update the data
+            await updateSampleData();
+        }
+        
+        // Update sample data based on user inputs
+        async function updateSampleData() {
+            const nPoints = document.getElementById('dataPoints').value;
+            const trend = parseFloat(document.getElementById('trend').value);
+            const seasonality = parseFloat(document.getElementById('seasonality').value);
+            const noise = parseFloat(document.getElementById('noise').value);
+            
+            // Update the displayed values
+            document.getElementById('trendValue').textContent = trend.toFixed(1);
+            document.getElementById('seasonalityValue').textContent = seasonality.toFixed(1);
+            document.getElementById('noiseValue').textContent = noise.toFixed(1);
+            document.getElementById('dataPointsValue').textContent = nPoints;
+            
+            try {
+                // Call the sample data API
+                const response = await fetch(`/api/time-series/forecast/sample-data?n_points=${nPoints}&trend=${trend}&seasonality=${seasonality}&noise=${noise}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Update the textarea with the sample data
+                    document.getElementById('trainingData').value = JSON.stringify(data.values, null, 2);
+                } else {
+                    showError('trainingError', `Error loading sample data: ${data.detail || 'Unknown error'}`);
+                }
+            } catch (error) {
+                showError('trainingError', `Error: ${error.message}`);
+            }
+        }
+        
+        async function trainModel() {
+            // Clear previous errors and show loading
+            clearError('trainingError');
+            showLoading('trainingStatus', true);
+            
+            try {
+                // Get and validate model ID
+                const modelId = document.getElementById('modelId').value.trim();
+                if (!modelId) {
+                    throw new Error('Please enter a model ID');
+                }
+                
+                // Get model type
+                const modelType = document.getElementById('modelType').value;
+                
+                // Parse and validate training data
+                let trainingData;
+                try {
+                    trainingData = JSON.parse(document.getElementById('trainingData').value.trim());
+                    if (!Array.isArray(trainingData)) {
+                        throw new Error('Training data must be a JSON array of numbers');
+                    }
+                    if (trainingData.length < 10) {
+                        throw new Error('At least 10 data points are required for training');
+                    }
+                }
+                
+                // Prepare the request data with proper structure
+                const requestData = {
+                data: {
+                    values: trainingData,
+                    freq: "D"  // Daily frequency
+                },
+                config: {
+                    model_type: modelType,
+                    model_id: modelId,
+                    p: 1,  // AR order
+                    d: 1,  // I order (differencing)
+                    q: 1,  // MA order
+                    lstm_units: 50,  // Number of LSTM units
+                    epochs: 50,      // Reduced for faster training
+                    batch_size: 16,   // Smaller batch size for better generalization
+                    look_back: 7      // Number of previous time steps to use for prediction
+                }
+            };
+
+            try {
+                showLoading('trainingStatus', true);
+                clearError('trainingError');
+                
+                const response = await fetch('/api/time-series/forecast/train', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(result.detail || 'Failed to train model');
+                }
+                
+                alert(`Model trained successfully! Model ID: ${result.model_id}`);
+            } catch (error) {
+                showError('trainingError', `Error: ${error.message}`);
+                console.error('Training error:', error);
+            } finally {
+                showLoading('trainingStatus', false);
+            }
+        }
+        
+        async function generateForecast() {
+            const modelId = document.getElementById('modelId').value.trim();
+            const steps = parseInt(document.getElementById('forecastSteps').value);
+            
+            if (!modelId) {
+                showError('forecastError', 'Please train a model first');
+                return;
+            }
+            
+            try {
+                showLoading('forecastStatus', true);
+                clearError('forecastError');
+                
+                const response = await fetch(`${API_BASE_URL}/time-series/forecast/forecast`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        model_id: modelId,
+                        steps: steps,
+                        confidence_level: 0.95
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(result.detail || 'Failed to generate forecast');
+                }
+                
+                // Update chart with forecast data
+                updateChart(result);
+                
+            } catch (error) {
+                showError('forecastError', `Error: ${error.message}`);
+                console.error('Forecast error:', error);
+            } finally {
+                showLoading('forecastStatus', false);
+            }
+        }
+        
+        function updateChart(forecastData) {
+            try {
+                const ctx = document.getElementById('forecastChart').getContext('2d');
+                
+                // Prepare data for Chart.js
+                const labels = forecastData.timestamps || [];
+                const forecastValues = forecastData.forecast || [];
+                const lowerBounds = forecastData.lower_bound || [];
+                const upperBounds = forecastData.upper_bound || [];
+                
+                // If we have historical data, use it; otherwise, create some
+                let historicalLabels = [];
+                let historicalValues = [];
+                
+                if (forecastData.historical_dates && forecastData.historical_values) {
+                    // Use provided historical data
+                    historicalLabels = forecastData.historical_dates;
+                    historicalValues = forecastData.historical_values;
+                } else {
+                    // Generate some historical data (2x forecast length, up to 30 points)
+                    const histLength = Math.min(forecastValues.length * 2, 30);
+                    for (let i = 0; i < histLength; i++) {
+                        if (forecastValues.length > 0) {
+                            const baseValue = forecastValues[0] * (1 - (histLength - i) * 0.05);
+                            const noise = (Math.random() - 0.5) * (forecastValues[0] * 0.1);
+                            historicalValues.push(Math.max(0, baseValue + noise));
+                        } else {
+                            historicalValues.push(Math.random() * 100);
+                        }
+                        historicalLabels.push(`Day -${histLength - i}`);
+                    }
+                }
+                
+                // Combine historical and forecast data
+                const allLabels = [...historicalLabels, ...labels];
+                const allValues = [...historicalValues, ...forecastValues];
+                
+                // Create or update chart
+                if (chart) {
+                    chart.destroy();
+                }
+                
+                // Find the index where forecast starts
+                const forecastStartIndex = historicalLabels.length;
+                
+                // Prepare confidence interval data if available
+                const confidenceData = [];
+                if (lowerBounds.length > 0 && upperBounds.length > 0) {
+                    for (let i = 0; i < allValues.length; i++) {
+                        if (i >= forecastStartIndex) {
+                            const idx = i - forecastStartIndex;
+                            if (idx < lowerBounds.length && idx < upperBounds.length) {
+                                confidenceData.push({
+                                    x: allLabels[i],
+                                    y: [lowerBounds[idx], upperBounds[idx]]
+                                });
+                            }
+                        }
+                    }
+                }
+                
+                chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: allLabels,
+                        datasets: [
+                            {
+                                label: 'Historical Data',
+                                data: allValues.map((v, i) => i < forecastStartIndex ? v : null),
+                                borderColor: 'rgb(75, 192, 192)',
+                                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                                tension: 0.3,
+                                borderWidth: 2,
+                                pointRadius: 3,
+                                fill: false
+                            },
+                            {
+                                label: 'Forecast',
+                                data: allValues.map((v, i) => i >= forecastStartIndex ? v : null),
+                                borderColor: 'rgb(255, 99, 132)',
+                                backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                                tension: 0.3,
+                                borderWidth: 2,
+                                borderDash: [5, 5],
+                                pointRadius: 3,
+                                fill: false
+                            }
+                                if (i < forecastStartIndex) return null;
+                                const idx = i - forecastStartIndex;
+                                return (upperBounds[idx] + lowerBounds[idx]) / 2;
+                            }),
+                            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                            borderColor: 'rgba(255, 99, 132, 0.1)',
+                            borderWidth: 0,
+                            pointRadius: 0,
+                            fill: true,
+                            showLine: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time'
+                            },
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Value'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: `Time Series Forecast (${forecastData.model_id})`
+                        },
+                        annotation: {
+                            annotations: {
+                                line1: {
+                                    type: 'line',
+                                    yMin: Math.min(...allValues) * 0.9,
+                                    yMax: Math.max(...allValues) * 1.1,
+                                    xMin: forecastStartIndex - 0.5,
+                                    xMax: forecastStartIndex - 0.5,
+                                    borderColor: 'rgba(0, 0, 0, 0.5)',
+                                    borderWidth: 1,
+                                    borderDash: [5, 5],
+                                    label: {
+                                        content: 'Forecast Start',
+                                        enabled: true,
+                                        position: 'top'
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function showLoading(elementId, show) {
+            document.getElementById(elementId).style.display = show ? 'block' : 'none';
+        }
+        
+        function showError(elementId, message) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.style.display = 'block';
+        }
+        
+        function clearError(elementId) {
+            const element = document.getElementById(elementId);
+            element.textContent = '';
+            element.style.display = 'none';
+        }
+    </script>
+</body>
+</html>

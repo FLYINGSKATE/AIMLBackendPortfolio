@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Time Series Forecast Visualization | Ashraf Khan</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .visualization-container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            margin-bottom: 30px;
+        }
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin: 20px 0;
+        }
+        .form-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        .slider-container {
+            margin: 15px 0;
+        }
+        .slider-container label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        .slider-container input[type="range"] {
+            width: 100%;
+        }
+        .slider-value {
+            display: inline-block;
+            width: 30px;
+            text-align: right;
+        }
+        .predefined-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 15px 0;
+        }
+        .predefined-buttons button {
+            flex: 1;
+            min-width: 120px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="index.html">Ashraf Khan</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="index.html#about">About</a></li>
+                    <li class="nav-item"><a class="nav-link" href="index.html#experience">Experience</a></li>
+                    <li class="nav-item"><a class="nav-link" href="index.html#skills">Skills</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="forecast.html">Time Series Demo</a></li>
+                    <li class="nav-item"><a class="nav-link" href="index.html#contact">Contact</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container py-5 mt-5">
+        <div class="row">
+            <div class="col-12 text-center mb-5">
+                <h1>Time Series Forecast Visualization</h1>
+                <p class="lead">Interactive demonstration of time series forecasting using different models</p>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-4">
+                <div class="form-section">
+                    <h4>1. Train a New Model</h4>
+                    <div class="mb-3">
+                        <label for="modelId" class="form-label">Model ID</label>
+                        <input type="text" class="form-control" id="modelId" placeholder="e.g., my_model">
+                    </div>
+                    <div class="mb-3">
+                        <label for="modelType" class="form-label">Model Type</label>
+                        <select class="form-select" id="modelType">
+                            <option value="LSTM">LSTM</option>
+                            <option value="ARIMA">ARIMA</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="trainingData" class="form-label">Training Data (JSON array of numbers)</label>
+                        <textarea class="form-control" id="trainingData" rows="5" placeholder="[10, 20, 30, 40, 50, 60, 70, 80, 90, 100]"></textarea>
+                        <button class="btn btn-outline-secondary btn-sm mt-2" onclick="loadSampleData()">
+                            <i class="fas fa-download me-1"></i> Load Sample Data
+                        </button>
+                    </div>
+                    
+                    <div id="sampleOptions" style="display: none;">
+                        <h5>Predefined Patterns</h5>
+                        <div class="predefined-buttons">
+                            <button class="btn btn-sm btn-outline-primary" onclick="loadPredefinedData('monthly_sales')">
+                                📈 Monthly Sales
+                            </button>
+                            <button class="btn btn-sm btn-outline-primary" onclick="loadPredefinedData('website_traffic')">
+                                🌐 Website Traffic
+                            </button>
+                            <button class="btn btn-sm btn-outline-primary" onclick="loadPredefinedData('stock_price')">
+                                💹 Stock Price
+                            </button>
+                            <button class="btn btn-sm btn-outline-primary" onclick="loadPredefinedData('temperature')">
+                                🌡️ Temperature
+                            </button>
+                        </div>
+                        
+                        <div class="slider-container">
+                            <label for="trend">Trend: <span id="trendValue">0.5</span></label>
+                            <input type="range" class="form-range" id="trend" min="0" max="1" step="0.1" value="0.5" oninput="updateSampleData()">
+                        </div>
+                        
+                        <div class="slider-container">
+                            <label for="seasonality">Seasonality: <span id="seasonalityValue">0.5</span></label>
+                            <input type="range" class="form-range" id="seasonality" min="0" max="1" step="0.1" value="0.5" oninput="updateSampleData()">
+                        </div>
+                        
+                        <div class="slider-container">
+                            <label for="noise">Noise: <span id="noiseValue">0.2</span></label>
+                            <input type="range" class="form-range" id="noise" min="0" max="1" step="0.1" value="0.2" oninput="updateSampleData()">
+                        </div>
+                        
+                        <div class="slider-container">
+                            <label for="dataPoints">Data Points: <span id="dataPointsValue">30</span></label>
+                            <input type="range" class="form-range" id="dataPoints" min="10" max="100" step="1" value="30" oninput="updateSampleData()">
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary w-100 mt-3" onclick="trainModel()">
+                        <span id="trainButtonText">Train Model</span>
+                        <span id="trainingSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                    </button>
+                    <div id="trainingStatus" class="mt-2 text-muted small"></div>
+                    <div id="trainingError" class="text-danger small mt-2"></div>
+                </div>
+                
+                <div class="form-section mt-4">
+                    <h4>2. Generate Forecast</h4>
+                    <div class="input-group mb-3">
+                        <input type="number" class="form-control" id="forecastSteps" placeholder="Number of steps" value="5">
+                        <button class="btn btn-primary" type="button" onclick="generateForecast()">
+                            <span id="forecastButtonText">Generate Forecast</span>
+                            <span id="forecastSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                        </button>
+                    </div>
+                    <div id="forecastStatus" class="small text-muted"></div>
+                    <div id="forecastError" class="text-danger small"></div>
+                </div>
+                
+                <div class="mt-4">
+                    <h5>Model Information</h5>
+                    <div id="modelInfo" class="bg-light p-3 rounded">
+                        <p class="mb-1"><strong>Status:</strong> <span id="modelStatus">No model trained</span></p>
+                        <p class="mb-1"><strong>Type:</strong> <span id="modelTypeDisplay">-</span></p>
+                        <p class="mb-1"><strong>Training Points:</strong> <span id="trainingPoints">0</span></p>
+                        <p class="mb-0"><strong>Last Trained:</strong> <span id="lastTrained">-</span></p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-8">
+                <div class="visualization-container">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4>Forecast Visualization</h4>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="showConfidence" checked>
+                            <label class="form-check-label" for="showConfidence">Show Confidence Interval</label>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="forecastChart"></canvas>
+                    </div>
+                    <div class="text-end">
+                        <button class="btn btn-sm btn-outline-secondary" onclick="downloadChart()">
+                            <i class="fas fa-download me-1"></i> Download Chart
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="visualization-container mt-4">
+                    <h4>Model Performance</h4>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title">Training Metrics</h5>
+                                    <div id="trainingMetrics">
+                                        <p class="text-muted">Train a model to see metrics</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title">Forecast Values</h5>
+                                    <div id="forecastValues" class="small">
+                                        <p class="text-muted">Generate a forecast to see values</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-white py-4">
+        <div class="container text-center">
+            <p class="mb-0">&copy; 2025 Ashraf Khan. All rights reserved. | <a href="index.html" class="text-white">Back to Portfolio</a></p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/forecast.js"></script>
+</body>
+</html>
