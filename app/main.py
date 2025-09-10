@@ -6,13 +6,7 @@ from fastapi.openapi.utils import get_openapi
 import os
 import logging
 from pathlib import Path
-from typing import Optional, List, Union
-
-# Import config
-import sys
-from pathlib import Path
-sys.path.append(str(Path(__file__).parent.parent))
-from config import config as app_config
+from typing import Optional
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -36,18 +30,12 @@ app = FastAPI(
     - 📈 Time Series Forecasting (ARIMA, LSTM)
     - 🎮 Reinforcement Learning (CartPole with DQN)
     """,
-    version=app_config.VERSION,
+    version="1.0.0",
     contact={
-        "name": "Ashraf Khan",
-        "email": "ashrafksalim1@gmail.com",
+        "name": "Your Name",
+        "email": "your.email@example.com",
     },
-    docs_url=f"{app_config.API_PREFIX}/docs",
-    redoc_url=f"{app_config.API_PREFIX}/redoc",
 )
-
-# Create necessary directories
-os.makedirs(app_config.UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(app_config.MODEL_DIR, exist_ok=True)
 
 # Mount static files for the portfolio
 PORTFOLIO_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "portfolio"))
@@ -57,7 +45,6 @@ os.makedirs(os.path.join(PORTFOLIO_DIR, "static"), exist_ok=True)
 
 # Serve portfolio static files from the static directory
 app.mount("/static", StaticFiles(directory=os.path.join(PORTFOLIO_DIR, "static")), name="static")
-app.mount("/uploads", StaticFiles(directory=app_config.UPLOAD_FOLDER), name="uploads")
 
 # Serve CSS and JS files from the portfolio root
 app.mount("/css", StaticFiles(directory=PORTFOLIO_DIR), name="css")
@@ -103,21 +90,11 @@ app.openapi = custom_openapi
 # Enable CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=app_config.BACKEND_CORS_ORIGINS,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Health check endpoint
-@app.get("/api/health", status_code=200)
-async def health_check():
-    """Health check endpoint for monitoring"""
-    return {
-        "status": "healthy",
-        "version": app_config.VERSION,
-        "debug": app_config.DEBUG
-    }
 
 # Include all routers
 app.include_router(supervised_router, prefix="/api/supervised", tags=["Supervised Learning"])
